@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools", "wheel","toml"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pybiblionet"  # Replace this with the actual name of your project
+version = "1.0.2"
+description = "PyBiblioNet is a Python library for performing network-based bibliometrics"
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { file = "LICENSE" }
+dependencies=[
+    'adjustText==1.3.0',
+    'infomap==2.8.0',
+    'keybert==0.9.0',
+    'matplotlib==3.10.5',
+    'networkx==3.5',
+    'numpy==2.3.2',
+    'pandas==2.3.1',
+    'python_igraph==0.11.9',
+    'Requests==2.32.4',
+    'scikit_learn==1.7.1',
+    'seaborn==0.13.2',
+    'tqdm==4.67.1',
+    'python-louvain==0.16'
+]
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.urls]
+Homepage = "https://github.com/mirkolai/pybiblionet"
+Repository = "https://github.com/mirkolai/pybiblionet"
+Issues = "https://github.com/mirkolai/pybiblionet/issues"
+Documentation = "https://github.com/mirkolai/pybiblionet#readme"
+
+
+[tool.setuptools.exclude-package-data]
+"*" = ["__pycache__/*", "tests/*"]
+
