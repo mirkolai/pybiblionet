@@ -25,5 +25,14 @@ These nuanced insights allow for a more refined understanding of scientific impa
 To install the latest version from TestPyPI:
 
 ```bash
-pip install --upgrade pybiblionet --index-url https://test.pypi.org/simple/ pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple
+pip install --upgrade pybiblionet
 
+or
+
+pip install --upgrade pybiblionet  --index-url https://test.pypi.org/simple/ pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple
+
+```
+
+tested on Windows 11 with python 10 and visual studio code 2022
+       on linux (Ubuntu 24.04) with python 13
+       on mac OS (Ventura 13.2) with python 10
