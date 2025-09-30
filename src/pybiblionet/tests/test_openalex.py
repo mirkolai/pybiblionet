@@ -13,7 +13,7 @@ if __name__ == "__main__" :
 
     queries = string_generator_from_lite_regex("(15)( )(minute|min)( )(city)")
 
-    mail = "mirko.lai@uniupo.it"
+    mail = "youremail@example.com"
     from_publication_date = "2024-01-01"
     to_publication_date = None
     json_file_path = retrieve_articles(queries, mail, from_publication_date, to_publication_date)

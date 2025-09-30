@@ -22,7 +22,7 @@ if __name__ == "__main__" :
     plot_article_trends(articles,
                         date_from=datetime(2019, 1, 1),
                         interval="month",  # Change to "month" or "quarter" or "year" as needed
-                        date_to=datetime(2023, 12, 31),
+                        date_to=datetime(2025, 12, 31),
                         num_ticks=20)
     plot_topic_trends(
         articles,

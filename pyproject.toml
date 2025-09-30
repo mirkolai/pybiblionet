@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybiblionet"  # Replace this with the actual name of your project
-version = "1.0.2"
+version = "1.0.3"
 description = "PyBiblioNet is a Python library for performing network-based bibliometrics"
 readme = { file = "README.md", content-type = "text/markdown" }
 license = { file = "LICENSE" }
