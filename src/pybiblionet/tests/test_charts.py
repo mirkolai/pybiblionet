@@ -32,7 +32,7 @@ if __name__ == "__main__" :
         interval="quarter", # Change to "quarter" or "year"
         date_from=datetime(2019, 1, 1),
         date_to=datetime(2025, 12, 31),
-        top_n=5,
+        top_n=10,
         )
     plot_top_authors(
         articles,
@@ -44,19 +44,23 @@ if __name__ == "__main__" :
         n_colors=["#a6cee3","#1f78b4","#b2df8a","#33a02c","#d7191c","#fdae61"]
     )
 
-    plot_top_keywords_from_abstracts(articles)
+    plot_top_keywords_from_abstracts(articles,
+                                     show_root_set=True,
+                                     show_base_set=True,
+                                     date_from=datetime(2019, 1, 1),
+                                     date_to=datetime(2025, 12, 31),
+                                     )
 
 
     plot_keyword_trends(
         articles=articles,
-        date_from=datetime(2020, 1, 1),
-        date_to=datetime(2025, 1, 1),
+        date_from=datetime(2019, 1, 1),
+        date_to=datetime(2021, 1, 1),
         show_root_set=True,
         show_base_set=True,
-        top_n=10,
+        top_n=5,
         ngram_range=(1, 2),
         interval="quarter",
-        n_colors=["#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#d7191c", "#fdae61"]
     )
 
 

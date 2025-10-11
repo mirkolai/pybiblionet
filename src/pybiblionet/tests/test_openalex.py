@@ -14,11 +14,10 @@ if __name__ == "__main__" :
     queries = string_generator_from_lite_regex("(15)( )(minute|min)( )(city)")
 
     mail = "youremail@example.com"
-    from_publication_date = "2024-01-01"
+    from_publication_date = "2019-01-01"
     to_publication_date = None
     json_file_path = retrieve_articles(queries, mail, from_publication_date, to_publication_date)
     print(json_file_path)
-    #json_file_path= "query_results/query_result_1ea020320b230de5a973a39682eaa53dce89a9bb026b441a5f825232.json"
     export_institutions_to_csv(json_file_path,
                            fields_to_export=None,
                            export_path="15minute_institutions.csv"

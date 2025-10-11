@@ -33,6 +33,14 @@ pip install --upgrade pybiblionet  --index-url https://test.pypi.org/simple/ pip
 
 ```
 
+
+This project uses **spaCy** for text processing and requires the English language model `en_core_web_sm`.  
+After installing the package, please download the model by running:
+
+```bash
+python -m spacy download en_core_web_sm
+```
+
 tested on Windows 11 with python 3.10 and visual studio code 2022
        on linux (Ubuntu 24.04) with python 3.12
        on mac OS (Ventura 13.2) with python 3.10

@@ -168,9 +168,9 @@ def extract_clusters_to_csv(G: nx.DiGraph|nx.Graph, fields: List[str], csv_file_
         fields = available_fields
     if len(fields)==0:
         raise ValueError(f"Choose at least a field from: {', '.join(available_fields)}")
-    print(fields)
+
     invalid_fields = [field for field in fields if field not in available_fields]
-    print(invalid_fields)
+
 
     if invalid_fields:
         raise ValueError(f"The following fields are not available in a {type_of_graph} graph: {', '.join(invalid_fields)}")
@@ -183,10 +183,10 @@ def extract_clusters_to_csv(G: nx.DiGraph|nx.Graph, fields: List[str], csv_file_
 
         for node in G.nodes(data=True):
             node_info = json.loads(node[1]['info'])
-            print(node_info)
+
 
             row = extract_fields(node_info, fields)
-            print(row)
+
             row["cluster"] = node[1]["cluster"]
             writer.writerow(row)
 

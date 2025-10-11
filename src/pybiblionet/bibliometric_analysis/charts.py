@@ -10,7 +10,15 @@ from keybert import KeyBERT
 from tqdm import tqdm
 from matplotlib.lines import Line2D
 from matplotlib.colors import to_hex
-from adjustText import adjust_text
+import spacy
+
+# Carica il modello inglese di spaCy
+nlp = spacy.load("en_core_web_sm")
+
+def lemmatize_text(text):
+    doc = nlp(text)
+    # Ricrea il testo con parole lemmatizzate
+    return " ".join([token.lemma_ for token in doc if not token.is_punct])
 
 
 def _parse_publication_date(date_str: str) -> Optional[datetime]:
@@ -204,17 +212,21 @@ def plot_article_trends(
     ax.fill_between(x, y_root_set, y_root_set + y_non_root_set, label="Base Set", color=color_base_set, alpha=0.7)
 
     # Configure chart
-    ax.set_title(f"Number of Articles by {interval}", fontsize=26, fontweight='bold')
+    ax.set_title(f"Number of articles by {interval}", fontsize=26, fontweight='bold')
     ax.set_xlabel(f"Publication {interval.title()}", fontsize=22)
-    ax.set_ylabel("Number of Articles", fontsize=22)
+    ax.set_ylabel("Number of articles", fontsize=22)
     ax.legend(fontsize=20)
-    ax.grid(True, linestyle="--", alpha=0.5)
 
     # Adjust x-axis ticks for better readability
     xticks = x[::max(1, len(x) // num_ticks)]  # Reduce the number of ticks to at most num_ticks
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticks, rotation=45, fontsize=20)
     ax.tick_params(axis='y', labelsize=20)
+    ax.grid(axis='y', linestyle='--', alpha=0.5)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
     plt.tight_layout()
     plt.show()
 
@@ -484,10 +496,9 @@ def plot_topic_trends(
             ax.scatter(x_non_root_set, bottom_non_root_set.values + root_set_data[column].values, marker=10, color="black", s=30)
 
     # Configure chart
-    ax.set_title(f"Top {top_n} {key} by {interval}", fontsize=26, fontweight='bold')
+    ax.set_title(f"Top {top_n} {key.lower()}s by {interval.lower()}", fontsize=26, fontweight='bold')
     ax.set_xlabel(f"Publication {interval.title()}", fontsize=22)
     ax.set_ylabel("Number of Articles", fontsize=22)
-    ax.grid(True, linestyle="--", alpha=0.5)
 
     # Adjust x-axis ticks for better readability
     xticks = list(x)[::max(1, len(x) // num_ticks)]
@@ -515,6 +526,11 @@ def plot_topic_trends(
         (list(by_label.values()) + markers)[::-1],
         (list(by_label.keys()) + markers_labels)[::-1],
               fontsize=20, loc='upper left', bbox_to_anchor=(1.02, 1))
+    ax.grid(axis='y', linestyle='--', alpha=0.5)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
     plt.tight_layout()
     plt.show()
 
@@ -660,10 +676,13 @@ def plot_top_authors(
     ax.set_xlabel("Authors", fontsize=22)
     ax.set_ylabel("Number of Articles" if not by_citations else "Number of Citations", fontsize=14)
     ax.legend(title=key, bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=16, title_fontsize=22)
-    ax.grid(True, linestyle="--", alpha=0.5)
     plt.xticks(rotation=45, ha="right",fontsize=20)
     ax.tick_params(axis='y', labelsize=20)
-
+    ax.grid(axis='y', linestyle='--', alpha=0.5)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
     plt.tight_layout()
     plt.show()
 
@@ -743,8 +762,9 @@ def plot_top_keywords_from_abstracts(
 
         # Extract keywords from abstracts
         for abstract in abstracts:
+            lemmatize_abstract = lemmatize_text(abstract)
             keywords = kw_model.extract_keywords(
-                abstract, keyphrase_ngram_range=ngram_range
+                lemmatize_abstract, keyphrase_ngram_range=ngram_range
             )
             # Add keywords to the counter (ensuring uniqueness per article)
             keyword_counts.update(set(kw for kw, _ in keywords))
@@ -759,39 +779,26 @@ def plot_top_keywords_from_abstracts(
     fig, ax = plt.subplots(figsize=(14, 8))
     ax.bar(keywords, counts, color=color, edgecolor='black')
 
-    ax.set_title(f"Top {top_n} Keywords from Abstracts", fontsize=26, fontweight='bold')
+    ax.set_title(f"Top {top_n} Keywords from abstracts", fontsize=26, fontweight='bold')
     ax.set_xlabel("Keywords", fontsize=22)
     ax.set_ylabel("Frequency", fontsize=22)
     plt.xticks(rotation=45, ha="right",fontsize=20)
     ax.tick_params(axis='y', labelsize=20)
-
+    ax.grid(axis='y', linestyle='--', alpha=0.5)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
     plt.tight_layout()
     plt.show()
 
 
-
 def plot_keyword_trends(
     articles, date_from=None, date_to=None, show_root_set=True,
-    show_base_set=False, top_n=10, ngram_range=(1, 2), interval="month", n_colors=None
+    show_base_set=False, top_n=5, ngram_range=(1, 2), interval="month", n_colors=None
 ):
     """
     Plots a line chart showing the trends of top keywords over time.
-
-    Args:
-        articles (dict): JSON-like dataset containing articles with metadata.
-        date_from (datetime, optional): Start date for filtering articles by publication date.
-        date_to (datetime, optional): End date for filtering articles by publication date.
-        show_root_set (bool): If True, include root set articles in the analysis.
-        show_base_set (bool): If True, include base set articles and their citations.
-        top_n (int): Number of top keywords to display.
-        ngram_range (tuple): N-gram range for extracting keywords with KeyBERT.
-        interval (str): Time interval for grouping ('month', 'quarter', 'year').
-        n_colors (list, optional): List of hex colors for the keyword lines. Repeats if shorter than top_n.
-    Raises:
-        ValueError: If neither `show_root_set` nor `show_base_set` is True.
-
-    Returns:
-        None: The function directly displays the chart using matplotlib.
     """
     if not show_root_set and not show_base_set:
         raise ValueError("You must display at least one of the following: root set or base set (show_root_set, show_base_set).")
@@ -799,15 +806,12 @@ def plot_keyword_trends(
     if interval not in ["month", "quarter", "year"]:
         raise ValueError("Invalid interval. Choose from 'month', 'quarter', or 'year'.")
 
-
     kw_model = KeyBERT()
     keyword_counts_by_time = defaultdict(Counter)
-
     root_set_article_id = set(articles.keys())
 
     for article_id, article_data in tqdm(articles.items()):
         pub_date = _parse_publication_date(article_data.get("publication_date"))
-
 
         # Determine time period based on interval
         if interval == "month":
@@ -818,18 +822,14 @@ def plot_keyword_trends(
         elif interval == "year":
             time_period = pub_date.strftime("%Y")
 
-        # Main article abstract
-
+        # Filtra per date
         if not (date_from and (not pub_date or pub_date < date_from) or date_to and (not pub_date or pub_date > date_to)):
             abstract = article_data.get("abstract", "")
-            keywords = kw_model.extract_keywords(
-                abstract, keyphrase_ngram_range=ngram_range
-            )
-            keyword_counts_by_time[time_period].update(
-                set(kw for kw, _ in keywords)
-            )
+            lemmatize_abstract = lemmatize_text(abstract)
+            keywords = kw_model.extract_keywords(lemmatize_abstract, keyphrase_ngram_range=ngram_range)
+            keyword_counts_by_time[time_period].update(set(kw for kw, _ in keywords))
 
-        # Base set: citations and cited articles
+        # Base set
         if show_base_set:
             for citation_key in ["incoming_citations", "outgoing_citations"]:
                 for related_article in article_data.get(citation_key, []):
@@ -845,8 +845,6 @@ def plot_keyword_trends(
                     if not cited_abstract:
                         continue
                     root_set_article_id.add(related_article_id)
-
-                    # Determine time period based on interval
                     if interval == "month":
                         time_period = pub_date.strftime("%Y-%m")
                     elif interval == "quarter":
@@ -854,62 +852,58 @@ def plot_keyword_trends(
                         time_period = f"{pub_date.year}-Q{quarter}"
                     elif interval == "year":
                         time_period = pub_date.strftime("%Y")
-                    keywords = kw_model.extract_keywords(
-                        cited_abstract, keyphrase_ngram_range=ngram_range
-                    )
-                    keyword_counts_by_time[time_period].update(
-                        set(kw for kw, _ in keywords)
-                    )
+                    lemmatize_cited_abstract = lemmatize_text(cited_abstract)
+                    keywords = kw_model.extract_keywords(lemmatize_cited_abstract, keyphrase_ngram_range=ngram_range)
+                    keyword_counts_by_time[time_period].update(set(kw for kw, _ in keywords))
 
-    # Aggregate data for top keywords
+    # Aggrega dati
     aggregated_counts = defaultdict(lambda: defaultdict(int))
     for time_period, counts in keyword_counts_by_time.items():
         for keyword, count in counts.items():
             aggregated_counts[keyword][time_period] += count
 
-    # Get top `top_n` keywords overall
     overall_counts = Counter()
     for keyword, time_data in aggregated_counts.items():
         overall_counts[keyword] += sum(time_data.values())
     top_keywords = [kw for kw, _ in overall_counts.most_common(top_n)]
 
-    # Prepare data for plotting
     df = pd.DataFrame.from_dict(aggregated_counts, orient="index").fillna(0)
-    df = df.loc[top_keywords]  # Keep only top keywords
-    df = df.T.sort_index()  # Transpose and sort by time
+    df = df.loc[top_keywords]
+    df = df.T.sort_index()
 
-    # Plot line chart
-
+    # --- PLOT ---
     fig, ax = plt.subplots(figsize=(14, 8))
 
-    texts = []
     if n_colors is None:
         colormap = plt.get_cmap('tab10')
-        n_colors = [to_hex(c) for c in colormap(np.linspace(0, 1, 10 + 1))]
-    for i,keyword in enumerate(top_keywords):
+        n_colors = [to_hex(c) for c in colormap(np.linspace(0, 1, 10))]
+
+    markers = ["o", "s", "^", "D", "x", "*", "P", "v","^","+"]
+    for i, keyword in enumerate(top_keywords):
         y_values = df[keyword]
+        color = n_colors[i % len(n_colors)]
+        marker = markers[int(i/10) % len(markers)]
 
-        color = n_colors[i % len(n_colors)] if n_colors else None
-        ax.plot(df.index, y_values, marker="o", linestyle="--", label=keyword, alpha=0.7, color=color)
+        ax.plot(df.index, y_values, marker=marker, linestyle="-", label=keyword, alpha=0.9, color=color)
 
-
-        num_points = len(df.index)
-        i=(i%num_points)+1
-        x_pos = df.index[-i]
-        y_pos = df.loc[x_pos, keyword]
-
-        text = ax.text(x_pos, y_pos, keyword, fontsize=20, verticalalignment="bottom",
-                       bbox=dict(facecolor='white', alpha=0.3, edgecolor='white'))
-        texts.append(text)
-    adjust_text(texts, arrowprops=dict(arrowstyle="-", color='gray', lw=2.5))
-
+    ax.grid(axis='y', linestyle='--', alpha=0.5)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
     ax.set_title("Keyword Trends Over Time", fontsize=26, fontweight='bold')
     ax.set_xlabel(f"Time Period ({interval})", fontsize=22)
     ax.set_ylabel("Frequency", fontsize=22)
-    ax.legend(title="Keywords", bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=20)
-    plt.xticks(rotation=45, ha="right",fontsize=20)
+    plt.xticks(rotation=45, ha="right", fontsize=20)
     ax.tick_params(axis='y', labelsize=20)
 
-    plt.grid(True, linestyle="--", alpha=0.5)
+    handles, labels = ax.get_legend_handles_labels()
+    legend_elements = [
+        plt.Line2D([0], [0], color=n_colors[i % len(n_colors)], marker = markers[int(i/10) % len(markers)], lw=4, linestyle='-',
+                   label=kw) for i, kw in enumerate(top_keywords)
+    ]
+    ax.legend(handles=legend_elements, title="Keywords", bbox_to_anchor=(1.05, 1),
+              loc="upper left", fontsize=20, title_fontsize=22, frameon=False)
+
     plt.tight_layout()
     plt.show()

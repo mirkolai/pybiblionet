@@ -105,6 +105,7 @@ def query_OpenAlex(api_type: str, parameter: Optional[str], mail: str,
                 return hashlib.md5(url.encode('utf-8')).hexdigest()
             this_url_filename=this_url.split('?')[1]
             filename = cache_path / f"{hash_url(this_url_filename)}.json.gz"
+            #filename = cache_path / f"{this_url.split('?')[-1]}.json.gz"
 
             if cache and path.isfile(filename):
                 with gzip.open(filename, 'rt', encoding='utf-8') as f:
@@ -629,7 +630,7 @@ def export_venues_to_csv(json_file_path,fields_to_export: Optional[List[str]] = 
                         else:
                             author_base_set[venue_id] += 1
 
-                        print(row)
+
                         if venue_id not in [venue["primary_location source id"] for venue in venues_to_save]:
                             venues_to_save.append(row)
                         already_done_articles.add(cite["id"])
@@ -897,7 +898,7 @@ def export_institutions_to_csv(json_file_path, fields_to_export: Optional[List[s
                                 institution_id = institution.get("id")
                                 # Skip authors that have already been saved
                                 row = {field: field_mapping(institution)[field] for field in fields_to_export}
-                                print(row)
+
 
                                 if article_id in root_set_articles:
                                     institution_root_set[institution_id]+=1

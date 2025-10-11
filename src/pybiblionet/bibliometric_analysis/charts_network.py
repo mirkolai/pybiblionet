@@ -7,8 +7,8 @@ import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 import pandas as pd
 import seaborn as sns
-
-
+from matplotlib.patches import FancyArrowPatch
+import textwrap
 
 def _get_centeroid(arr: List[Tuple[float, float]], position_scale_factor: int =1) -> Tuple[float, float]:
     """
@@ -146,7 +146,7 @@ def _get_top_m_entries(clusters: Dict[int, Dict[str, int]], n: int,top_n_cluster
                 total_counts[entry] = 0
             total_counts[entry] += count
     sorted_entries = sorted(total_counts.items(), key=lambda x: x[1], reverse=True)
-    print(sorted_entries)
+
     return [x[0] for x in sorted_entries[:n]]
 
 def _get_top_n_clusters(G: nx.DiGraph|nx.Graph, n_clusters: int) -> Dict[int, int]:
@@ -167,6 +167,7 @@ def _get_top_n_clusters(G: nx.DiGraph|nx.Graph, n_clusters: int) -> Dict[int, in
             top_n_clusters[node_data['cluster']] += 1
         else:
             top_n_clusters[node_data['cluster']] = 1
+
 
     top_n_clusters = sorted(top_n_clusters.items(), key=lambda x: x[1], reverse=True)[:n_clusters]
 
@@ -283,10 +284,11 @@ def show_clustered_graph(G,
                          max_pie_radius : float = 3,
                          size_legend_marker=2,
                          size_legend_font=15,
-                         size_node_font=15,
-                         min_edge_width :int = 5,
-                         max_edge_width :int = 20,
+                         size_node_font=13,
+                         min_edge_width :int = 1,
+                         max_edge_width :int = 200,
                          edge_color: str = '#add8e6',
+                         hatch: Optional[str] = '',
                          top_m_entries: Optional[List[str]] = None,
                          bbox_to_anchor_legend_entries: Tuple[float, float, float, float] = (1, 1),
                          bbox_to_anchor_legend_clusters: Tuple[float, float, float, float] = (0, 1),
@@ -317,6 +319,7 @@ def show_clustered_graph(G,
             min_edge_width (int): Minimum width for inter-cluster edges.
             max_edge_width (int): Maximum width for inter-cluster edges.
             edge_color (str): Color used for edges between clusters.
+            hatch (Optional[str]): Pattern to fill the doughnut segments. Default is '', e.g., '/', 'x', or 'o'.
             top_m_entries (Optional[List[str]]): Specific top entries to include in pies.
             bbox_to_anchor_legend_entries (Tuple[float]): Positioning of the entries legend.
             bbox_to_anchor_legend_clusters (Tuple[float]): Positioning of the cluster legend.
@@ -342,8 +345,8 @@ def show_clustered_graph(G,
         if len(n_cluster_colors) != n_clusters:
             raise ValueError("top n_cluster_colors must be the same size of n_clusters.")
     if m_entry_colors is not None:
-        if len(m_entry_colors) != m_entries:
-            raise ValueError("top m_entry_colors must be the same size of m_entries.")
+        if len(m_entry_colors) != m_entries+1:
+            raise ValueError("top m_entry_colors must be the same size of m_entries (one color for other).")
 
     if top_m_entries != None:
         if len(top_m_entries) != m_entries:
@@ -375,14 +378,11 @@ def show_clustered_graph(G,
     if m_entry_colors is None:
         cmap = plt.get_cmap('tab10')
         m_entry_colors = [cmap(i) for i in range(n_clusters+1)] #+1 for Other
-    print("m_entry_colors")
-    print(m_entry_colors)
 
-    top_n_clusters=_get_top_n_clusters(G, n_clusters)#987
-    print("top_n_clusters", top_n_clusters)
+
+    top_n_clusters=_get_top_n_clusters(G, n_clusters)
     top_n_clusters=_normalize_degree(top_n_clusters)
-    print("top_n_clusters", top_n_clusters)
-    print(top_n_clusters)
+
 
     if G.is_directed():
         entries_in_clusters = _get_entities_in_clusters_citation_graph(G, topics_level)
@@ -393,7 +393,6 @@ def show_clustered_graph(G,
 
     if top_m_entries is None:
         top_m_entries = _get_top_m_entries(entries_in_clusters, m_entries,top_n_clusters)
-    print("top_m_entries",top_m_entries)
     map_color_to_entry={}
     for i, entry in enumerate(top_m_entries+["Other"]):
         map_color_to_entry[entry]=m_entry_colors[i]
@@ -418,8 +417,8 @@ def show_clustered_graph(G,
         x, y = cluster_position_map[cluster_id]
         circle1 = plt.Circle((x, y),
                              radius,
-                             ec='black',
-                             linewidth=1,
+                             ec='white',
+                             linewidth=2,
                              color=n_cluster_colors[i],
                              zorder=4,
                              )
@@ -438,22 +437,45 @@ def show_clustered_graph(G,
 
     ##########################################################################################
     #draw edges
+    def draw_curved_edge(ax, x0, y0, x1, y1, weight, max_weight, min_edge_width=0.5, max_edge_width=5, color='gray',
+                         clockwise=True):
+        # Calcola un offset per la curvatura
+        dx = x1 - x0
+        dy = y1 - y0
+        dist = np.sqrt(dx ** 2 + dy ** 2)
 
+        # Curvature: positiva = anti-orario, negativa = orario
+        curvature = 0.2  # puoi modulare in base alla distanza o al peso
+        if clockwise:
+            curvature = -curvature
 
-    for community_pair,weight in cluster_edge_map.items():
-        source=int(community_pair.split(" ")[0])
-        target=int(community_pair.split(" ")[1])
+        # Usa FancyArrowPatch per arco curvo
+        arrow = FancyArrowPatch((x0, y0), (x1, y1),
+                                connectionstyle=f"arc3,rad={curvature}",
+                                linewidth=min_edge_width + ((max_edge_width - min_edge_width) * (weight / max_weight)),
+                                color=color,
+                                alpha=0.3,
+                                zorder=-100)
+        ax.add_patch(arrow)
+
+    max_weight = max(cluster_edge_map.values())
+    for community_pair, weight in cluster_edge_map.items():
+        source, target = map(int, community_pair.split(" "))
         if source not in cluster_position_map or target not in cluster_position_map:
             continue
-        print(source,target)
 
         x0, y0 = cluster_position_map[source]
         x1, y1 = cluster_position_map[target]
-        ax_graph.plot([x0, x1], [y0, y1],
-                 linewidth = min_edge_width+((max_edge_width-min_edge_width)*(weight/np.max([x for x in cluster_edge_map.values()]))),
-                 color = edge_color,
-                 alpha = .3,
-                 zorder = -100)
+
+        # Determina la direzione
+        # ad esempio: entrante (target) = orario, uscente (source) = antiorario
+        clockwise = True  # True = curvatura in senso orario, False = anti-orario
+        # Puoi anche decidere basandoti su qualche proprietà del nodo
+
+        draw_curved_edge(ax_graph, x0, y0, x1, y1, weight, max_weight, min_edge_width=min_edge_width, max_edge_width=max_edge_width,
+                         color=edge_color, clockwise=clockwise)
+
+
 
 
 
@@ -467,8 +489,7 @@ def show_clustered_graph(G,
 
         radius=radius+min_pie_radius + max_pie_radius *( top_n_clusters[cluster_id]/max(top_n_clusters.values()))
         size_legend_markers.append(radius)
-        filtered_enties={ "Other" : 0}
-        print(f"entries_in_clusters[{cluster_id}]",entries_in_clusters[cluster_id])
+        filtered_enties={ "Other" : 0.1}
         for discipline,occurencies in entries_in_clusters[cluster_id].items():
             if discipline in top_m_entries:
                 filtered_enties[discipline]=occurencies
@@ -491,7 +512,7 @@ def show_clustered_graph(G,
             if list(filtered_enties.values())[i]==0:
                 continue
             patches[0][i].set(fill=True,
-                              hatch='..',
+                              hatch=hatch,
                               edgecolor='#C0C0C0')
 
 
@@ -506,7 +527,7 @@ def show_clustered_graph(G,
             mpatches.Patch(facecolor=map_color_to_entry[entry],
                            label=entry,
                            fill=True,
-                           hatch='..',
+                           hatch=hatch,
                            edgecolor='#C0C0C0')
 
     legend_entries = ax_legend_left.legend(handles=[value for x, value in handles.items()],
@@ -544,54 +565,158 @@ def show_clustered_graph(G,
     plt.ylim((y_min - max_radius*2, y_max +  max_radius*2))
     if export_path_png is not None:
         plt.savefig(export_path_png)
+
     plt.tight_layout()
     plt.show()
     plt.close()
 
 
-def show_cluster_statistics(csv_file_path, color="#a5b8d7",image_size=(800, 800), n_clusters=5):
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+
+
+def show_cluster_statistics(
+        csv_file_path,
+        n_cluster_colors,
+        n_clusters=5):
     """
-    Displays a horizontal bar chart showing the distribution of the number of nodes per cluster.
+    Generate cluster-level statistics and a LaTeX table summarizing the most frequent categories
+    (disciplines or countries) for each cluster.
 
-    Parameters:
-        csv_file_path (str): Path to the CSV file containing at least a 'cluster' column that identifies the cluster of each node.
-        color (str): Color of the bars in the chart (default: light blue).
-        image_size (tuple): Size of the chart in pixels (width, height).
-        n_clusters (int): Number of top clusters to display (those with the most nodes).
+    Parameters
+    ----------
+    csv_file_path : str
+        Path to the CSV file containing the clustering data.
+    n_cluster_colors : list of str, optional
+        List of HEX color codes to represent clusters. Default is a predefined color palette.
+    n_clusters : int, optional
+        Number of clusters to display (and number of colors expected).
 
-    Returns:
-        None: Displays the bar chart using matplotlib.
+    Returns
+    -------
+    stats_df : pandas.DataFrame
+        DataFrame containing the computed cluster statistics.
+    latex_output : str
+        String with the LaTeX table code representing cluster composition.
 
-    Notes:
-        - The CSV file must contain a column named 'cluster'.
-        - Clusters are sorted in descending order by frequency, and only the top `n_clusters` are shown.
+    Notes
+    -----
+    The CSV file must contain a 'cluster' column and either:
+      - 'primary_topic field display_name' (for citation graph analysis), or
+      - 'countries' (for co-authorship graph analysis).
     """
+
+    # --- Check colors ---
+    if n_cluster_colors is None:
+        n_cluster_colors = n_clusters * ["#FFFFFF"]
+
+    if len(n_cluster_colors) != n_clusters:
+        raise ValueError(
+            f"The number of colors ({len(n_cluster_colors)}) must match n_clusters ({n_clusters})."
+        )
+
+    # --- Read CSV file ---
     df = pd.read_csv(csv_file_path)
 
-    cluster_counts = df['cluster'].value_counts().to_dict()
+    if 'cluster' not in df.columns:
+        raise ValueError("The CSV file must contain a 'cluster' column.")
+    if ('primary_topic field display_name' not in df.columns) and ('countries' not in df.columns):
+        raise ValueError(
+            "The CSV file must contain 'primary_topic field display_name' (for citation graphs) "
+            "or 'countries' (for co-authorship graphs)."
+        )
 
-    top_n_clusters = dict(sorted(cluster_counts.items(), key=lambda x: x[1], reverse=True)[:n_clusters])
+    # --- Compute statistics per cluster ---
+    cluster_stats = []
+    for cluster_id, group in df.groupby('cluster'):
+        num_entities = len(group)
+        if 'primary_topic field display_name' in df.columns:
+            type_class = "disciplines"
+            entities = "papers"
+        else:
+            type_class = "countries"
+            entities = "authors"
 
+        # Rename to a common 'class' column for easier processing
+        group = group.rename(columns={'primary_topic field display_name': 'class', 'countries': 'class'})
+        most_common = group['class'].value_counts(normalize=True).head(3)
+        entries = list(most_common.index)
+        percentages = list((most_common * 100).round(0).astype(int))
 
-    dpi = plt.rcParams['figure.dpi']
-    fig_size = (image_size[0]/dpi, image_size[1]/dpi)
+        row = {
+            'Id': int(cluster_id),
+            f'Num of {entities}': num_entities,
+        }
 
-    fig = plt.figure(figsize=fig_size)
+        # Fill top 3 most common categories
+        for i in range(3):
+            if i + 1 == 1:
+                post = "st"
+            elif i + 1 == 2:
+                post = "nd"
+            else:
+                post = "rd"
 
-    sorted_clusters = sorted(top_n_clusters.items(), key=lambda item: item[1], reverse=True)
+            if i < len(entries):
+                row[f'{i + 1}{post}'] = f"{entries[i]} ({percentages[i]}\\%)"  # \% for LaTeX
+            else:
+                row[f'{i + 1}{post}'] = ""
 
-    plt.barh([str(cluster) for cluster, _ in sorted_clusters],
-            [count for _, count in sorted_clusters],
-            color=color)
+        cluster_stats.append(row)
 
+    stats_df = pd.DataFrame(cluster_stats)
 
-    plt.xlabel("Count", fontsize=16)
-    plt.ylabel("Cluster ID", fontsize=16)
-    plt.title("Number of Nodes per Cluster", fontsize=20, fontweight='bold')
-    plt.grid(axis='x', linestyle='--', alpha=0.7)
+    # Sort clusters by size (descending), then by ID (ascending)
+    stats_filtered_df = (
+        stats_df
+        .sort_values(by=[f'Num of {entities}', 'Id'], ascending=[False, True])
+        .head(n_clusters)
+        .reset_index(drop=True)
+    )
 
-    plt.tight_layout()
-    plt.show()
+    # --- Generate LaTeX table code ---
+    latex_lines = []
+    latex_lines.append("\\begin{table}[h!]")
+    latex_lines.append("\\centering")
+    latex_lines.append("\\tiny")
+    latex_lines.append("\\begin{tabular}{lllll}")
+    latex_lines.append("\\toprule")
+    latex_lines.append(
+        f"\\multicolumn{{2}}{{l}}{{\\textbf{{Cluster}}}} & "
+        f"\\multicolumn{{3}}{{l}}{{\\textbf{{Most frequent {type_class}}}}}\\\\"
+    )
+    latex_lines.append("\\cmidrule(lr){1-2} \\cmidrule(lr){3-5}")
+    latex_lines.append("Id & Num of papers & 1st & 2nd & 3rd \\\\")
+    latex_lines.append("\\midrule")
+
+    # Add table rows with color-coded cluster markers
+    for i, row in stats_filtered_df.iterrows():
+        color = n_cluster_colors[i]
+        latex_color_name = f"color{i}"
+
+        # Convert HEX color to LaTeX RGB format
+        r = int(color[1:3], 16) / 255
+        g = int(color[3:5], 16) / 255
+        b = int(color[5:7], 16) / 255
+
+        latex_lines.append(f"\\definecolor{{{latex_color_name}}}{{rgb}}{{{r:.2f},{g:.2f},{b:.2f}}}")
+        latex_lines.append(
+            f"\\textcolor{{{latex_color_name}}}{{  \\scalebox{{1.5}}{{$\\bullet$}}  }}~{row['Id']} & "
+            f"{row[f'Num of {entities}']} & {row['1st']} & {row['2nd']} & {row['3rd']} \\\\"
+        )
+
+    latex_lines.append("\\bottomrule")
+    latex_lines.append("\\end{tabular}")
+    latex_lines.append(f"\\caption{{Cluster composition and most frequent {type_class}.}}")
+    latex_lines.append(f"\\label{{tab:cluster_{entities}}}")
+    latex_lines.append("\\end{table}")
+
+    latex_output = "\n".join(latex_lines)
+
+    return stats_df, latex_output
+
 
 
 def show_graph_statistics(G,csv_file_path,header_color="#a5b8d7"):
@@ -625,11 +750,9 @@ def show_graph_statistics(G,csv_file_path,header_color="#a5b8d7"):
 
     """
     df = pd.read_csv(csv_file_path)
-    print(df.head)
 
     all_available_metrics = ['betweenness_centrality', 'closeness_centrality', 'page_rank', 'in_degree', 'out_degree', 'degree']
     df = df[[col for col in all_available_metrics if col in df.columns]]
-    print(df.head)
     def to_camel_case(text: str) -> str:
         text = text.replace("_", " ")
         words = text.split()
@@ -689,6 +812,8 @@ def show_graph_statistics(G,csv_file_path,header_color="#a5b8d7"):
                   cellLoc='center',
                   bbox=[0, y_min, 1, vertical_width]
                   )
+
+
     plt.show()
     plt.close()
 
@@ -701,27 +826,35 @@ def show_graph_statistics(G,csv_file_path,header_color="#a5b8d7"):
     for colum in df.columns:
 
         plt.figure(figsize=(10, 6))
-        sns.histplot(df[colum], bins=30, kde=True, color='b', log_scale=True)
+        ax = sns.histplot(df[colum], bins=30, kde=True, color='b', log_scale=True)
         plt.title(f'Distribution of {colum}', fontsize=20, fontweight='bold')
         plt.xlabel(colum)
         plt.ylabel('Frequency')
+        ax.grid(axis='y', linestyle='--', alpha=0.5)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
         plt.show()
         plt.close()
 
-    plt.figure(figsize=(10, 6))
-    mask = np.tril(np.ones_like(correlation_matrix, dtype=bool), k=-1)
-    np.fill_diagonal(correlation_matrix.values, 1)
-
+    plt.figure(figsize=(8, 6))
+    mask = np.tril(np.ones_like(correlation_matrix, dtype=bool))
+    np.fill_diagonal(mask, True)
 
     sns.heatmap(correlation_matrix, mask=mask, annot=True, cmap='coolwarm', center=0, annot_kws={"color": "black"})
-    plt.title('Correlation Heatmap of Centrality Measures', fontsize=20, fontweight='bold')
+    plt.title('Correlation Heatmap of Centrality Measures', fontsize=20, fontweight='bold',pad=30)
     for i, label in enumerate(df.columns):
-        plt.text(-0.3 + i, i + 0.5, label, ha='right', va='center',  fontsize=10, color="black")
+        wrapped_label = "\n".join(textwrap.wrap(label, width=15))
+        if i>0:
+            rotation=0
+        else:
+            rotation=0
+        plt.text(0.9 + i, i + 0.5, wrapped_label, ha='right', va='center',  fontsize=13, color="black",rotation=rotation)
 
     plt.xticks([])
     plt.yticks([])
     plt.xlabel('')
     plt.ylabel('')
-    plt.subplots_adjust(left=0.35)
-
+    plt.subplots_adjust(left=0.2)
     plt.show()
