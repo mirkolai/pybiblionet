@@ -2,6 +2,9 @@
 
 **PyBiblioNet** is a Python library for performing *network-based bibliometrics*, an analytical framework that leverages network science to study and quantify relationships and influence among scientific entities such as authors, and articles.
 
+Cite this article:
+Lai, M., Vilella, S., Cena, F. et al. pyBiblioNet: a Python library for a comprehensive network-based bibliometric analysis. Scientometrics (2026). https://doi.org/10.1007/s11192-025-05458-0
+
 ## Why Use Network Analysis in Bibliometrics?
 
 Network analysis provides powerful tools to uncover key patterns and actors in the scholarly ecosystem. By computing **centrality metrics**, it is possible to go beyond traditional indicators like raw citation counts or the h-index. Network-based metrics help identify:
@@ -26,10 +29,6 @@ To install the latest version from Pypip (recommended) or TestPyPI:
 
 ```bash
 pip install --upgrade pybiblionet
-
-or
-
-pip install --upgrade pybiblionet  --index-url https://test.pypi.org/simple/ pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple
 
 ```
 
