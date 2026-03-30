@@ -54,7 +54,7 @@ def string_generator_from_lite_regex(queries_regex: str) -> List[str]:
 
     return queries
 
-def query_OpenAlex(api_type: str, parameter: Optional[str], mail: str,
+def query_OpenAlex(api_type: str, parameter: Optional[str], mail: str, api_key: str,
                    from_publication_date: Optional[str] = None,
                    to_publication_date: Optional[str] = None,
                    cache: bool = True) -> List[Dict[str, Dict]]:
@@ -111,7 +111,14 @@ def query_OpenAlex(api_type: str, parameter: Optional[str], mail: str,
                 with gzip.open(filename, 'rt', encoding='utf-8') as f:
                     result = json.load(f)
             else:
-                response = requests.get(this_url)
+                response = requests.get(this_url+f"&api_key={api_key}")
+                status_code = response.status_code
+                if str(status_code) == '429':
+                    print(f"Daily limit exceeded. Wait 300 seconds before trying again.")
+                    sleep(300)
+                elif str(status_code) == '403':
+                    print(f"Rate limit exceeded. Slow down. Wait 60 seconds before trying again.")
+                    sleep(60)
                 response.raise_for_status()
                 txt = response.text
 
@@ -137,13 +144,13 @@ def query_OpenAlex(api_type: str, parameter: Optional[str], mail: str,
                 cursor = result['meta']['next_cursor']
         except Exception as e:
             print(f"Error in query_OpenAlex_{api_type}:", e)
-            sleep(3)
+            sleep(10)
             break
 
     return results
 
 
-def retrieve_articles(queries: list[str], mail: str,
+def retrieve_articles(queries: list[str], mail: str,api_key,
                            from_publication_date: Optional[str] = None,
                            to_publication_date: Optional[str] = None)->str:
     """
@@ -173,7 +180,7 @@ def retrieve_articles(queries: list[str], mail: str,
 
     for query in queries:
 
-        results=query_OpenAlex("search",query,  mail, from_publication_date, to_publication_date)
+        results=query_OpenAlex("search",query,  mail, api_key, from_publication_date, to_publication_date)
         result_ids = set()
         for result in results:
             result_ids.add(result['id'])
@@ -181,8 +188,8 @@ def retrieve_articles(queries: list[str], mail: str,
         for result in results:
 
             result["root_set"] = True
-            result['incoming_citations'] =  query_OpenAlex("cite", result['id'], mail)
-            result['outgoing_citations'] = query_OpenAlex("cited_by", result['id'], mail)
+            result['incoming_citations'] =  query_OpenAlex("cite", result['id'], mail, api_key)
+            result['outgoing_citations'] = query_OpenAlex("cited_by", result['id'], mail, api_key)
 
             output[result['id']] = copy.deepcopy(result)
 
@@ -693,8 +700,8 @@ def export_authors_to_csv(json_file_path, fields_to_export: Optional[List[str]] 
                 "author id": (data.get("author", {})  or {}).get("id",""),
                 "author orcid": (data.get("author", {}) or {}).get("orcid",""),
                 "author display_name": (data.get("author", {}) or {}).get("display_name",""),
-                "institutions display_name": " ".join([inst["display_name"] for inst in (data.get("institutions", []) or [])]),
-                "institutions type": " ".join([inst["type"] for inst in (data.get("institutions", []) or [])]),
+                "institutions display_name": " ".join([str(inst["display_name"]) for inst in (data.get("institutions", []) or [])]),
+                "institutions type": " ".join([str(inst["type"]) for inst in (data.get("institutions", []) or [])]),
                 "countries": " ".join((data.get("countries", []) or []))
             }
     # Available fields for authors
@@ -758,7 +765,6 @@ def export_authors_to_csv(json_file_path, fields_to_export: Optional[List[str]] 
                     if article_id not in already_done_articles:
                         for author in cite.get('authorships', []):
                             author_id = author.get("author").get("id")
-
                             # Skip authors that have already been saved
                             row = {field: field_mapping(author)[field] for field in fields_to_export}
                             if article_id in root_set_articles:
@@ -1027,10 +1033,11 @@ def create_coauthorship_graph(articles: Dict[str, Dict], export_path: Optional[s
         authors=[]
         for author in authorships:
             author_id=author["author"]["id"]
-            authors.append(author_id)
-            if not G.has_node(author_id):
-                author_info = author
-                G.add_node(author_id, **save_author_fields_for_gephi(author_info),info=json.dumps(author_info))
+            if author_id is not None:
+                authors.append(author_id)
+                if not G.has_node(author_id):
+                    author_info = author
+                    G.add_node(author_id, **save_author_fields_for_gephi(author_info),info=json.dumps(author_info))
 
         # Add edges (co-authorship between each pair of authors)
         for i in range(len(authors)):
@@ -1060,10 +1067,11 @@ def create_coauthorship_graph(articles: Dict[str, Dict], export_path: Optional[s
                     authors = []
                     for author in authorships:
                         author_id = author["author"]["id"]
-                        authors.append(author_id)
-                        if not G.has_node(author_id):
-                            author_info = author
-                            G.add_node(author_id, **save_author_fields_for_gephi(author_info), info=json.dumps(author_info))
+                        if author_id is not None:
+                            authors.append(author_id)
+                            if not G.has_node(author_id):
+                                author_info = author
+                                G.add_node(author_id, **save_author_fields_for_gephi(author_info), info=json.dumps(author_info))
 
 
                     # Add edges (co-authorship between each pair of authors)

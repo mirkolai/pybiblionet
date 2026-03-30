@@ -48,3 +48,4 @@ tested on Windows 11 with python 3.10 and visual studio code 2022
 
 If you encounter any problems, the best way to reach me is by opening a new [GitHub Issue](https://github.com/mirkolai/pybiblionet/issues).
 This helps keep everything transparent and trackable.
+- Update 1.0.6 includes API key authentication, required by OpenAlex from February 13, 2026.

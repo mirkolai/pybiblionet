@@ -19,3 +19,9 @@
 /src/pybiblionet/tests/cache/
 /src/pybiblionet/tests/cache/
 /src/pybiblionet/tests/cache.zip
+/src/pybiblionet/tests/cluster_and_fields_coauthorship.csv
+/src/pybiblionet/tests/clustered_15minute_c.zip
+/src/pybiblionet/tests/clustered_15minute_citation_graph.GML
+/src/pybiblionet/tests/clustered_15minute_coauthorship_graph.GML
+/src/pybiblionet/tests/stisitiche cluster.py
+/src/pybiblionet/tests/cache_new/

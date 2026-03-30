@@ -14,9 +14,12 @@ if __name__ == "__main__" :
     queries = string_generator_from_lite_regex("(15)( )(minute|min)( )(city)")
 
     mail = "youremail@example.com"
+    api_key = "YOUR_KEY" #how to obtain an api key https://developers.openalex.org/guides/authentication
+                         #check your daily usage limit here https://openalex.org/settings/usage
     from_publication_date = "2019-01-01"
+
     to_publication_date = None
-    json_file_path = retrieve_articles(queries, mail, from_publication_date, to_publication_date)
+    json_file_path = retrieve_articles(queries, mail, api_key, from_publication_date, to_publication_date)
     print(json_file_path)
     export_institutions_to_csv(json_file_path,
                            fields_to_export=None,
